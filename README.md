@@ -102,13 +102,35 @@ sdkmanager "ndk;27.2.12479018"
 adb install -r build/synk.apk
 ```
 
-## Pushing to GitHub
+## F-Droid & Reproducible Builds
 
-This repository is initialized on `main` with GitHub Actions CI (`.github/workflows/ci.yml`) that runs `./test.sh`, builds a native-NDK APK artifact on every push/PR, and publishes GitHub Releases automatically on `v*` tags:
+Synk complies with the [F-Droid Inclusion Policy](https://f-droid.org/en/docs/Inclusion_Policy/) (100% MIT FOSS, zero proprietary SDKs, zero trackers, zero prebuilt blobs) and includes:
+
+- **Fastlane Store Metadata**: `fastlane/metadata/android/en-US/` (`title.txt`, `short_description.txt`, `full_description.txt`, `changelogs/`, `images/icon.png`, `images/featureGraphic.png`)
+- **F-Droid Recipe**: [`fdroid/org.synk.yml`](fdroid/org.synk.yml) and step-by-step submission guide [`fdroid/README.md`](fdroid/README.md)
+- **Automated Policy & Metadata Linter**: `./scripts/fdroid-check.sh`
+- **Bit-for-Bit Reproducible Unsigned Builds**: `./build.sh --unsigned` normalizes compiler paths, ELF build IDs, ZIP ordering, and `SOURCE_DATE_EPOCH` timestamps.
+
+## CI/CD & Auto-Release on `main` Tags
+
+- **CI (`.github/workflows/ci.yml`)**: Runs on every push/PR to `main` — executes `./scripts/fdroid-check.sh`, `./test.sh` (C11 ASan/UBSan + JNI + 10 integration tests), verifies bit-for-bit reproducible unsigned APK builds across two passes, and uploads native NDK APK artifacts.
+- **Auto-Release CD (`.github/workflows/release.yml`)**: Runs whenever a SemVer tag (`vX.Y.Z`) is pushed — verifies the tagged commit is on `main` and matches `version.properties`/`AndroidManifest.xml`, runs all checks + reproducibility verification, signs with your repository keystore secrets (`SIGNING_KEYSTORE_B64`, `SIGNING_KEYSTORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`), and publishes a GitHub Release with `synk-vX.Y.Z.apk`, `synk-vX.Y.Z-unsigned.apk`, `SHA256SUMS.txt`, and Fastlane changelog notes.
+
+### Cutting a New Release
+```bash
+./scripts/bump-version.sh 1.1.0
+# Edit fastlane/metadata/android/en-US/changelogs/2.txt
+git add -A && git commit -m "Release v1.1.0"
+git tag -a v1.1.0 -m "Synk v1.1.0"
+git push origin main v1.1.0
+```
+
+## Pushing & Triggering First Release
 
 ```bash
-git remote add origin git@github.com:<your-username>/synk.git
-git push -u origin main
+git push origin main
+git tag -a v1.0.0 -m "Synk v1.0.0"
+git push origin v1.0.0
 ```
 
 ## License

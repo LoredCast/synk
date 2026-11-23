@@ -1,15 +1,18 @@
-name: CI & Release Build
+name: CI (Test, F-Droid Lint & Reproducible Build)
 
 on:
   push:
     branches: [ main ]
-    tags: [ "v*" ]
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
-    name: C11 (ASan/UBSan) + JNI + Integration Tests
+  test-and-fdroid-lint:
+    name: C11 (ASan/UBSan) + JNI + F-Droid Policy Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -21,15 +24,16 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Run full test suite
+      - name: Run F-Droid Inclusion Policy & Fastlane metadata checks
+        run: ./scripts/fdroid-check.sh
+
+      - name: Run C11 unit tests, JNI build & Java integration suite
         run: ./test.sh
 
-  build-apk:
-    name: Build Native C11 + Java Android APK
-    needs: test
+  build-reproducible-apk:
+    name: Build & Verify Reproducible Native APK
+    needs: test-and-fdroid-lint
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,26 +44,50 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Set up Android SDK & NDK
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android Platform, Build-Tools & NDK
+      - name: Install pinned Android SDK & NDK (matching fdroid/org.synk.yml)
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018"
 
-      - name: Build signed APK with native C11 JNI libraries
-        run: ./build.sh
+      - name: Build deterministic unsigned APK (Pass 1 & Pass 2 reproducibility check)
+        env:
+          SYNK_PLATFORM: android-35
+          SYNK_BUILD_TOOLS: 35.0.0
+          SYNK_NDK: 27.2.12479018
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          ./build.sh --unsigned --require-ndk --output build/pass1-unsigned.apk
+          sleep 2
+          ./build.sh --unsigned --require-ndk --output build/synk-unsigned.apk
+          H1="$(sha256sum build/pass1-unsigned.apk | awk '{print $1}')"
+          H2="$(sha256sum build/synk-unsigned.apk | awk '{print $1}')"
+          echo "Pass 1 SHA-256: $H1"
+          echo "Pass 2 SHA-256: $H2"
+          if [ "$H1" != "$H2" ]; then
+            echo "ERROR: Build is NOT reproducible!" >&2
+            exit 1
+          fi
+          rm -f build/pass1-unsigned.apk
 
-      - name: Upload APK artifact
+      - name: Build signed debug APK with native C11 JNI libraries
+        env:
+          SYNK_PLATFORM: android-35
+          SYNK_BUILD_TOOLS: 35.0.0
+          SYNK_NDK: 27.2.12479018
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          ./build.sh --require-ndk --output build/synk.apk
+          (cd build && sha256sum synk.apk synk-unsigned.apk > SHA256SUMS.txt)
+          cat build/SHA256SUMS.txt
+
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: synk-apk
-          path: build/synk.apk
-
-      - name: Create GitHub Release on version tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: build/synk.apk
-          generate_release_notes: true
+          name: synk-ci-apk
+          path: |
+            build/synk.apk
+            build/synk-unsigned.apk
+            build/SHA256SUMS.txt

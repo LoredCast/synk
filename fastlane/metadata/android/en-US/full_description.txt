@@ -1,0 +1,26 @@
+Synk is an ultra-small, zero-dependency, pitch-black AMOLED Android synchronization client written in C11 and pure Java.
+
+Supported Protocols & Backends:
+* WebDAV (Nextcloud, OwnCloud, Seafile /seafdav, SabreDAV, generic WebDAV)
+* FTP and FTPS (Explicit TLS)
+* S3-compatible object storage (AWS S3, Backblaze B2, Cloudflare R2, MinIO, Wasabi)
+* Local and mounted folders (SD cards, USB OTG)
+* CalDAV (Calendars synced with Android CalendarContract)
+* CardDAV (Contacts synced with Android ContactsContract)
+
+Stateful 3-Way Sync & Conflict Resolution:
+* Tracks per-file SHA-256 hashes, remote ETags, and lightweight text baselines in SQLite WAL so offline edits and deletions are reconciled accurately without losing data.
+* Built-in C11 3-way diff3 text merge automatically merges non-overlapping edits on both client and server.
+* Interactive Conflict Manager displays editable 3-way merge previews with Keep Local, Keep Remote, Keep Both, and Save Edited Merge actions.
+* 6 Sync Modes: Two-Way Sync, Upload Only, Upload Mirror, Download Only, Download Mirror, and Backup (No Delete).
+* 6 Conflict Policies: Auto-Merge Text Else Ask, Ask, Keep Both Copies, Local Wins, Remote Wins, and Newest Wins.
+
+Folder Selection, Watching & Scheduling:
+* Select specific local folders and browse remote folders directly with the built-in Remote File Explorer.
+* Live recursive local change watching via native Linux inotify with configurable debounce and self-sync cooldown.
+* Scheduled background syncs via Android JobScheduler with Wi-Fi-only, charging, battery level, and Battery Saver guards.
+* Live sync telemetry showing active file, progress bar, transfer speed, ETA, and cooperative cancellation.
+
+Privacy & Security:
+* 100% Free and Open Source Software (MIT license) with zero proprietary libraries, zero trackers, and zero analytics.
+* Credentials encrypted at rest via Android Keystore AES-256-GCM.

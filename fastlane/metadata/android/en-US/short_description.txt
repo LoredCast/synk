@@ -1,0 +1,1 @@
+Minimal AMOLED file, calendar & contacts sync (WebDAV, FTP, S3, CalDAV/CardDAV)

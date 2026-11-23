@@ -1,0 +1,158 @@
+name: Auto-Release on Main Tags
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Verify Main Tag, Test, Build Reproducible APK & Publish Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (full history for main-branch ancestry check)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag commit is on main and matches version.properties
+        id: meta
+        run: |
+          git fetch origin main --depth=100 || git fetch origin main
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+            echo "ERROR: Tag ${GITHUB_REF_NAME} (${GITHUB_SHA}) is NOT on branch 'main'. Aborting release." >&2
+            exit 1
+          fi
+
+          VERSION_NAME="$(grep '^versionName=' version.properties | cut -d= -f2)"
+          VERSION_CODE="$(grep '^versionCode=' version.properties | cut -d= -f2)"
+          EXPECTED_TAG="v${VERSION_NAME}"
+
+          if [ "${GITHUB_REF_NAME}" != "${EXPECTED_TAG}" ]; then
+            echo "ERROR: Tag '${GITHUB_REF_NAME}' does not match version.properties '${EXPECTED_TAG}'." >&2
+            exit 1
+          fi
+
+          echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+          echo "version_code=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
+          echo "Verified main tag ${GITHUB_REF_NAME} (versionCode=${VERSION_CODE})"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Run F-Droid compliance checks & full test suite
+        run: |
+          ./scripts/fdroid-check.sh
+          ./test.sh
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install pinned Android SDK & NDK (matching fdroid/org.synk.yml)
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018"
+
+      - name: Build deterministic unsigned APK & verify reproducibility
+        env:
+          SYNK_PLATFORM: android-35
+          SYNK_BUILD_TOOLS: 35.0.0
+          SYNK_NDK: 27.2.12479018
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          V="${{ steps.meta.outputs.version_name }}"
+          ./build.sh --unsigned --require-ndk --output "build/pass1.apk"
+          sleep 2
+          ./build.sh --unsigned --require-ndk --output "build/synk-v${V}-unsigned.apk"
+          H1="$(sha256sum build/pass1.apk | awk '{print $1}')"
+          H2="$(sha256sum "build/synk-v${V}-unsigned.apk" | awk '{print $1}')"
+          if [ "$H1" != "$H2" ]; then
+            echo "ERROR: Release build failed reproducibility verification ($H1 != $H2)" >&2
+            exit 1
+          fi
+          rm -f build/pass1.apk
+
+      - name: Build & sign release APK
+        id: sign
+        env:
+          SYNK_PLATFORM: android-35
+          SYNK_BUILD_TOOLS: 35.0.0
+          SYNK_NDK: 27.2.12479018
+          SIGNING_KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+          SIGNING_KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          V="${{ steps.meta.outputs.version_name }}"
+          OUT="build/synk-v${V}.apk"
+
+          if [ -n "${SIGNING_KEYSTORE_B64}" ]; then
+            echo "${SIGNING_KEYSTORE_B64}" | base64 -d > /tmp/synk-release.keystore
+            export SYNK_KEYSTORE=/tmp/synk-release.keystore
+            export SYNK_KEYSTORE_PASS="${SIGNING_KEYSTORE_PASSWORD}"
+            export SYNK_KEY_ALIAS="${SIGNING_KEY_ALIAS}"
+            export SYNK_KEY_PASS="${SIGNING_KEY_PASSWORD:-$SIGNING_KEYSTORE_PASSWORD}"
+            ./build.sh --require-ndk --output "$OUT"
+            rm -f /tmp/synk-release.keystore
+            echo "signing_kind=release" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::SIGNING_KEYSTORE_B64 secret not configured; signing with ephemeral debug key."
+            ./build.sh --require-ndk --output "$OUT"
+            echo "signing_kind=debug" >> "$GITHUB_OUTPUT"
+          fi
+
+          APKSIGNER="${ANDROID_HOME}/build-tools/35.0.0/apksigner"
+          CERT_SHA="$("$APKSIGNER" verify --print-certs "$OUT" | grep 'certificate SHA-256 digest:' | head -n1 | awk '{print $NF}')"
+          echo "cert_sha256=${CERT_SHA}" >> "$GITHUB_OUTPUT"
+
+          (
+            cd build
+            sha256sum "synk-v${V}.apk" "synk-v${V}-unsigned.apk" > SHA256SUMS.txt
+            echo "" >> SHA256SUMS.txt
+            echo "# APK Signing Certificate SHA-256 (for F-Droid AllowedAPKSigningKeys):" >> SHA256SUMS.txt
+            echo "# ${CERT_SHA}" >> SHA256SUMS.txt
+          )
+          cat build/SHA256SUMS.txt
+
+      - name: Compose release notes from Fastlane changelog
+        run: |
+          VC="${{ steps.meta.outputs.version_code }}"
+          V="${{ steps.meta.outputs.version_name }}"
+          CERT="${{ steps.sign.outputs.cert_sha256 }}"
+          KIND="${{ steps.sign.outputs.signing_kind }}"
+          APK_SHA="$(grep "synk-v${V}\.apk$" build/SHA256SUMS.txt | awk '{print $1}')"
+          UNS_SHA="$(grep "synk-v${V}-unsigned\.apk$" build/SHA256SUMS.txt | awk '{print $1}')"
+
+          {
+            echo "## Synk v${V} (versionCode ${VC})"
+            echo ""
+            cat "fastlane/metadata/android/en-US/changelogs/${VC}.txt"
+            echo ""
+            echo "### Verification & F-Droid Reproducible Build Info"
+            echo "- **Signed APK (\`synk-v${V}.apk\`) SHA-256**: \`${APK_SHA}\`"
+            echo "- **Unsigned APK (\`synk-v${V}-unsigned.apk\`) SHA-256**: \`${UNS_SHA}\`"
+            echo "- **Signing Certificate SHA-256**: \`${CERT}\` (${KIND} key)"
+            echo "- **Native ABIs bundled**: \`arm64-v8a\`, \`armeabi-v7a\`, \`x86_64\` (NDK \`27.2.12479018\`)"
+            if [ "${KIND}" = "debug" ]; then
+              echo ""
+              echo "> **Note**: Configure \`SIGNING_KEYSTORE_B64\`, \`SIGNING_KEYSTORE_PASSWORD\`, \`SIGNING_KEY_ALIAS\`, and \`SIGNING_KEY_PASSWORD\` repository secrets to sign releases with a persistent release certificate."
+            fi
+          } > build/RELEASE_NOTES.md
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Synk v${{ steps.meta.outputs.version_name }}"
+          body_path: build/RELEASE_NOTES.md
+          generate_release_notes: true
+          files: |
+            build/synk-v${{ steps.meta.outputs.version_name }}.apk
+            build/synk-v${{ steps.meta.outputs.version_name }}-unsigned.apk
+            build/SHA256SUMS.txt

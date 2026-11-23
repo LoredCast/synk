@@ -1,0 +1,7 @@
+Initial release (v1.0.0):
+- C11 JNI + Java 3-way sync engine with LCS diff3 auto-merge & recursive inotify watcher
+- WebDAV (Nextcloud/Seafile), FTP/FTPS, S3 SigV4, Local, CalDAV & CardDAV support
+- Built-in local & remote file explorers
+- Interactive Conflict Manager with editable 3-way merge previews
+- Live sync progress telemetry (active file, speed, ETA, cancel)
+- Fine-grained AMOLED settings page & JobScheduler periodic background syncs
