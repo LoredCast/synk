@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/amoled_black"
+    android:fitsSystemWindows="true">
+
+    <!-- Top minimalist AMOLED header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingLeft="14dp"
+        android:paddingRight="10dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="10dp"
+        android:background="@color/amoled_black">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SYNK"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.12" />
+
+            <TextView
+                android:id="@+id/tv_engine_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Native C11"
+                android:textColor="@color/text_muted"
+                android:textSize="10sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btn_servers"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:minWidth="0dp"
+            android:paddingLeft="9dp"
+            android:paddingRight="9dp"
+            android:layout_marginRight="5dp"
+            android:text="SERVERS"
+            android:textSize="10sp"
+            android:textColor="@color/text_primary"
+            android:background="@drawable/bg_button" />
+
+        <Button
+            android:id="@+id/btn_sync_all"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:minWidth="0dp"
+            android:paddingLeft="9dp"
+            android:paddingRight="9dp"
+            android:layout_marginRight="5dp"
+            android:text="SYNC"
+            android:textSize="10sp"
+            android:textColor="@color/accent_green"
+            android:background="@drawable/bg_button_accent" />
+
+        <Button
+            android:id="@+id/btn_add"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:minWidth="0dp"
+            android:layout_marginRight="5dp"
+            android:text="+"
+            android:textSize="17sp"
+            android:textColor="@color/text_primary"
+            android:background="@drawable/bg_button" />
+
+        <Button
+            android:id="@+id/btn_settings"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:minWidth="0dp"
+            android:text="\u2699"
+            android:textSize="15sp"
+            android:textColor="@color/text_secondary"
+            android:background="@drawable/bg_button" />
+    </LinearLayout>
+
+    <!-- Live AMOLED Sync Telemetry Panel (shown automatically while syncing) -->
+    <LinearLayout
+        android:id="@+id/panel_live_sync"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginBottom="8dp"
+        android:padding="12dp"
+        android:background="@drawable/bg_card"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tv_live_header"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="SYNCING"
+                android:textColor="@color/accent_cyan"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:fontFamily="monospace" />
+
+            <Button
+                android:id="@+id/btn_live_cancel"
+                android:layout_width="wrap_content"
+                android:layout_height="26dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingLeft="8dp"
+                android:paddingRight="8dp"
+                android:text="CANCEL"
+                android:textSize="10sp"
+                android:textColor="@color/accent_red"
+                android:background="@drawable/bg_button" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_live_file"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:singleLine="true"
+            android:ellipsize="middle"
+            android:textColor="@color/text_primary"
+            android:textSize="12sp"
+            android:fontFamily="monospace" />
+
+        <ProgressBar
+            android:id="@+id/pb_live_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="6dp"
+            android:layout_marginTop="8dp"
+            android:max="100"
+            android:progressDrawable="@drawable/bg_progress" />
+
+        <TextView
+            android:id="@+id/tv_live_stats"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="@color/accent_green"
+            android:textSize="11sp"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:id="@+id/tv_live_counters"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="10sp"
+            android:fontFamily="monospace" />
+    </LinearLayout>
+
+    <!-- Storage permission warning banner (shown only when needed on Android 11+) -->
+    <LinearLayout
+        android:id="@+id/banner_storage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingLeft="14dp"
+        android:paddingRight="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_card"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Grant All Files Access to sync arbitrary folders &amp; watch changes."
+            android:textColor="@color/accent_amber"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btn_grant_storage"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:minWidth="0dp"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:layout_marginLeft="8dp"
+            android:text="GRANT"
+            android:textSize="11sp"
+            android:textColor="@color/accent_amber"
+            android:background="@drawable/bg_button" />
+    </LinearLayout>
+
+    <!-- Subtle hairline separator -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/amoled_divider" />
+
+    <!-- Optional bulk action bar (used in Conflicts & Log tabs) -->
+    <LinearLayout
+        android:id="@+id/sub_action_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="4dp"
+        android:visibility="gone" />
+
+    <!-- Main list content -->
+    <ListView
+        android:id="@+id/list_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="8dp"
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:clipToPadding="false"
+        android:cacheColorHint="@color/amoled_black"
+        android:listSelector="@android:color/transparent" />
+
+    <TextView
+        android:id="@+id/tv_empty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:padding="32dp"
+        android:textColor="@color/text_muted"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <!-- Hairline separator above bottom tabs -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/amoled_divider" />
+
+    <!-- AMOLED Bottom Tab Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:orientation="horizontal"
+        android:background="@color/amoled_black">
+
+        <Button
+            android:id="@+id/tab_folders"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="FOLDERS"
+            android:textSize="11sp"
+            android:background="@android:color/transparent"
+            android:textColor="@color/accent_green" />
+
+        <Button
+            android:id="@+id/tab_conflicts"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="CONFLICTS"
+            android:textSize="11sp"
+            android:background="@android:color/transparent"
+            android:textColor="@color/text_secondary" />
+
+        <Button
+            android:id="@+id/tab_pim"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="CAL / CONTACTS"
+            android:textSize="11sp"
+            android:background="@android:color/transparent"
+            android:textColor="@color/text_secondary" />
+
+        <Button
+            android:id="@+id/tab_logs"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="LOG"
+            android:textSize="11sp"
+            android:background="@android:color/transparent"
+            android:textColor="@color/text_secondary" />
+    </LinearLayout>
+</LinearLayout>

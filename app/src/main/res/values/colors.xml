@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="amoled_black">#000000</color>
+    <color name="amoled_surface">#0A0A0A</color>
+    <color name="amoled_surface_alt">#121212</color>
+    <color name="amoled_border">#1F1F1F</color>
+    <color name="amoled_divider">#161616</color>
+
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#8E8E93</color>
+    <color name="text_muted">#5C5C60</color>
+
+    <color name="accent_green">#00E676</color>
+    <color name="accent_cyan">#40C4FF</color>
+    <color name="accent_amber">#FFB300</color>
+    <color name="accent_red">#FF5252</color>
+</resources>
