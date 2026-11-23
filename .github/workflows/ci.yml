@@ -44,13 +44,20 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install pinned Android SDK & NDK (matching fdroid/org.synk.yml)
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018"
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -n1)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "ERROR: sdkmanager not found under $SDK/cmdline-tools" >&2
+            exit 1
+          fi
+          echo "Using sdkmanager: $SDKMANAGER"
+          (set +o pipefail; yes | "$SDKMANAGER" --sdk_root="$SDK" --licenses >/dev/null 2>&1 || true)
+          "$SDKMANAGER" --sdk_root="$SDK" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;27.2.12479018"
 
       - name: Build deterministic unsigned APK (Pass 1 & Pass 2 reproducibility check)
         env:
